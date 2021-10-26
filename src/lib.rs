@@ -1,3 +1,8 @@
+//! Provide a cell that is (mostly) readonly.
+//!
+//! This crate should only be used for extremely performance critical scenarios; you
+//! would normal want to use `once_cell` instead.
+
 #![no_std]
 
 use core::cell::UnsafeCell;
@@ -5,7 +10,7 @@ use core::fmt;
 use core::mem::MaybeUninit;
 use core::ops::Deref;
 
-/// A cell that is readonly.
+/// A cell that is (mostly) readonly.
 ///
 /// It is expected to remain readonly for most time. Some use cases include set-once global
 /// variables. Construction and mutation of `RoCell` are allowed in unsafe code, and the safety

@@ -3,5 +3,10 @@ name = "ro_cell"
 version = "0.1.0"
 authors = ["Gary Guo <gary@garyguo.net>"]
 edition = "2018"
+description = "A (mostly) readonly cell"
+categories = ["no-std", "rust-patterns"]
+keyword = ["static", "once_cell"]
+repository = "https://github.com/nbdd0121/ro_cell"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
