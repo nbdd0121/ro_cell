@@ -1,6 +1,9 @@
-use std::cell::UnsafeCell;
-use std::mem::MaybeUninit;
-use std::ops::Deref;
+#![no_std]
+
+use core::cell::UnsafeCell;
+use core::fmt;
+use core::mem::MaybeUninit;
+use core::ops::Deref;
 
 /// A cell that is readonly.
 /// It is expected to remain readonly for most time. Some use cases include set-once global
@@ -8,12 +11,13 @@ use std::ops::Deref;
 /// must be ensured by the caller.
 pub struct RoCell<T>(UnsafeCell<MaybeUninit<T>>);
 
+unsafe impl<T: Send> Send for RoCell<T> {}
 unsafe impl<T: Sync> Sync for RoCell<T> {}
 
 impl<T> Drop for RoCell<T> {
     #[inline]
     fn drop(&mut self) {
-        unsafe { std::mem::replace(&mut *(self.0.get()), MaybeUninit::uninit()).assume_init() };
+        unsafe { core::ptr::drop_in_place((*self.0.get()).as_mut_ptr()) };
     }
 }
 
@@ -39,7 +43,7 @@ impl<T> RoCell<T> {
     /// RoCell and other threads are properly synchronised after the call.
     #[inline]
     pub unsafe fn init(this: &Self, value: T) {
-        std::ptr::write((*this.0.get()).as_mut_ptr(), value);
+        core::ptr::write((*this.0.get()).as_mut_ptr(), value);
     }
 
     /// Replace a RoCell and return old content.
@@ -49,7 +53,7 @@ impl<T> RoCell<T> {
     /// RoCell and other threads are properly synchronised after the call.
     #[inline]
     pub unsafe fn replace(this: &Self, value: T) -> T {
-        std::mem::replace(RoCell::as_mut(this), value)
+        core::mem::replace(RoCell::as_mut(this), value)
     }
 
     #[inline]
@@ -67,8 +71,8 @@ impl<T> Deref for RoCell<T> {
     }
 }
 
-impl<T: std::fmt::Debug> std::fmt::Debug for RoCell<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Debug::fmt(self.deref(), f)
+impl<T: fmt::Debug> fmt::Debug for RoCell<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(self.deref(), f)
     }
 }
