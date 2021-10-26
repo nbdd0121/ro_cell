@@ -6,9 +6,14 @@ use core::mem::MaybeUninit;
 use core::ops::Deref;
 
 /// A cell that is readonly.
+///
 /// It is expected to remain readonly for most time. Some use cases include set-once global
-/// variables. Construction and mutation of RoCell are allowed in unsafe code, and the safety
+/// variables. Construction and mutation of `RoCell` are allowed in unsafe code, and the safety
 /// must be ensured by the caller.
+///
+/// This type should only be used for extremely performance critical scenarios; you
+/// would normal want to use `OnceCell` instead. Mutating `RoCell` in multi-threaded is
+/// extremely dangerous, do not take it lightly.
 pub struct RoCell<T>(UnsafeCell<MaybeUninit<T>>);
 
 unsafe impl<T: Send> Send for RoCell<T> {}
@@ -22,13 +27,17 @@ impl<T> Drop for RoCell<T> {
 }
 
 impl<T> RoCell<T> {
-    /// Create a new RoCell that is initialised already.
+    /// Create a new `RoCell` that is initialized already.
     #[inline]
     pub const fn new(value: T) -> Self {
         RoCell(UnsafeCell::new(MaybeUninit::new(value)))
     }
 
-    /// RoCell can be read in safe code. Therefore, we make its construction unsafe, therefore
+    /// Create a new `RoCell` that is uninitialized.
+    ///
+    /// # Safety
+    ///
+    /// RoCell can be read in safe code. Therefore, we make its construction unsafe to
     /// permitting uninit value. If `T` needs drop, the caller must ensure that RoCell is
     /// initialised or forgotten before it is dropped.
     #[inline]
@@ -36,7 +45,12 @@ impl<T> RoCell<T> {
         RoCell(UnsafeCell::new(MaybeUninit::uninit()))
     }
 
-    /// Initialise a RoCell.
+    /// Initialize a `RoCell`.
+    ///
+    /// # Safety
+    ///
+    /// The caller must guarantee that there are no other reference to the
+    /// content of this `RoCell` exists.
     ///
     /// No synchronisation is handled by RoCell.
     /// The caller must guarantee that no other threads are accessing this
@@ -46,9 +60,14 @@ impl<T> RoCell<T> {
         core::ptr::write((*this.0.get()).as_mut_ptr(), value);
     }
 
-    /// Replace a RoCell and return old content.
+    /// Replace a `RoCell` and return old content.
     ///
-    /// No synchronisation is handled by RoCell.
+    /// # Safety
+    ///
+    /// The caller must guarantee that there are no other reference to the
+    /// content of this `RoCell` exists.
+    ///
+    /// No synchronisation is handled by `RoCell`.
     /// The caller must guarantee that no other threads are accessing this
     /// RoCell and other threads are properly synchronised after the call.
     #[inline]
@@ -56,6 +75,18 @@ impl<T> RoCell<T> {
         core::mem::replace(RoCell::as_mut(this), value)
     }
 
+    /// Get a mutable reference to this `RoCell`.
+    ///
+    /// # Safety
+    ///
+    /// The caller must guarantee that there are no other reference to the
+    /// content of this `RoCell` exists, until the returned mutable reference
+    /// is dropped.
+    ///
+    /// No synchronisation is handled by `RoCell`.
+    /// The caller must guarantee that no other threads are accessing this
+    /// RoCell and other threads are properly synchronised after
+    /// manipulating the mutable reference.
     #[inline]
     pub unsafe fn as_mut(this: &Self) -> &mut T {
         &mut *(*this.0.get()).as_mut_ptr()
